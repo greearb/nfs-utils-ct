@@ -405,6 +405,57 @@ out:
 }
 
 /*
+ *  node should be an IPv4 or IPv6 address numeric notation.
+ *  The value will be parsed in placed into laddr.
+ *  Returns < 0 on failure to parse.
+ */
+int
+nfs_parse_local_bind(struct local_bind_info *laddr, const char* node,
+		     sa_family_t family) {
+	/* str is an IP address. */
+	int aiErr;
+	struct addrinfo *aiHead;
+	struct addrinfo hints;
+
+	memset(&hints, 0, sizeof(hints));
+
+	hints.ai_flags  = AI_NUMERICSERV;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_family = family;
+
+	aiErr = getaddrinfo(node, NULL, &hints, &aiHead);
+
+	if (aiErr != 0) {
+		char *f;
+		switch (family) {
+		case AF_INET:
+			f = "AF_INET";
+			break;
+		case AF_INET6:
+			f = "AF_INET6";
+			break;
+		default:
+			f = "UNKNOWN";
+			break;
+		}
+
+		nfs_error(_("%s: parse srcaddr failed, "
+			    "node: %s family: %s  aiErr: %i %s\n"),
+			  progname, node, f, aiErr, gai_strerror(aiErr));
+	} else {
+		if (aiHead) {
+			memcpy(&laddr->addr, aiHead->ai_addr,
+			       aiHead->ai_addrlen);
+			laddr->addrlen = aiHead->ai_addrlen;
+			freeaddrinfo(aiHead);
+			return 0;
+		}
+	}
+	return -1;
+}
+
+/*
  * Create a socket that is locally bound to a reserved or non-reserved port.
  *
  * The caller should check rpc_createerr to determine the cause of any error.
