@@ -52,6 +52,11 @@ union nfs_sockaddr {
 	struct sockaddr_in6	s6;
 };
 
+struct local_bind_info {
+	union nfs_sockaddr addr;
+	socklen_t addrlen;
+};
+
 #if SIZEOF_SOCKLEN_T - 0 == 0
 #define socklen_t unsigned int
 #endif

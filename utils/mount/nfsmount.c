@@ -129,7 +129,7 @@ nfs_call_mount(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server,
 	enum clnt_stat stat;
 	int msock;
 
-	if (!probe_bothports(mnt_server, nfs_server))
+	if (!probe_bothports(mnt_server, nfs_server, NULL))
 		goto out_bad;
 
 	clnt = mnt_openclnt(mnt_server, &msock);

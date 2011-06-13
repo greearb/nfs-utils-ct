@@ -112,7 +112,8 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
  * Returns zero on success, or returns -1 on error.  errno is
  * set to reflect the nature of the error.
  */
-static int nfs_bind(const int sock, const sa_family_t family)
+static int nfs_bind(const int sock, const sa_family_t family,
+		    struct local_bind_info *local_ip)
 {
 	struct sockaddr_in sin = {
 		.sin_family		= AF_INET,
@@ -144,7 +145,8 @@ static int nfs_bind(const int sock, const sa_family_t family)
  * Returns zero on success, or returns -1 on error.  errno is
  * set to reflect the nature of the error.
  */
-static int nfs_bindresvport(const int sock, const sa_family_t family)
+static int nfs_bindresvport(const int sock, const sa_family_t family,
+			    struct local_bind_info *local_ip)
 {
 	struct sockaddr_in sin = {
 		.sin_family		= AF_INET,
@@ -174,7 +176,8 @@ static int nfs_bindresvport(const int sock, const sa_family_t family)
  * Returns zero on success, or returns -1 on error.  errno is
  * set to reflect the nature of the error.
  */
-static int nfs_bindresvport(const int sock, const sa_family_t family)
+static int nfs_bindresvport(const int sock, const sa_family_t family,
+			    struct local_bind_info *local_ip)
 {
 	if (family != AF_INET) {
 		errno = EAFNOSUPPORT;
@@ -273,7 +276,8 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
 				 const rpcprog_t program,
 				 const rpcvers_t version,
 				 struct timeval *timeout,
-				 const int resvport)
+				 const int resvport,
+				 struct local_bind_info *local_ip)
 {
 	CLIENT *client;
 	int ret, sock;
@@ -301,9 +305,9 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
 	}
 
 	if (resvport)
-		ret = nfs_bindresvport(sock, sap->sa_family);
+		ret = nfs_bindresvport(sock, sap->sa_family, local_ip);
 	else
-		ret = nfs_bind(sock, sap->sa_family);
+		ret = nfs_bind(sock, sap->sa_family, local_ip);
 	if (ret < 0) {
 		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 		rpc_createerr.cf_error.re_errno = errno;
@@ -355,7 +359,8 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
 				 const rpcprog_t program,
 				 const rpcvers_t version,
 				 struct timeval *timeout,
-				 const int resvport)
+				 const int resvport,
+				 struct local_bind_info *local_ip)
 {
 	CLIENT *client;
 	int ret, sock;
@@ -383,9 +388,9 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
 	}
 
 	if (resvport)
-		ret = nfs_bindresvport(sock, sap->sa_family);
+		ret = nfs_bindresvport(sock, sap->sa_family, local_ip);
 	else
-		ret = nfs_bind(sock, sap->sa_family);
+		ret = nfs_bind(sock, sap->sa_family, local_ip);
 	if (ret < 0) {
 		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 		rpc_createerr.cf_error.re_errno = errno;
@@ -442,7 +447,8 @@ CLIENT *nfs_get_rpcclient(const struct sockaddr *sap,
 			  const unsigned short transport,
 			  const rpcprog_t program,
 			  const rpcvers_t version,
-			  struct timeval *timeout)
+			  struct timeval *timeout,
+			  struct local_bind_info *local_ip)
 {
 	nfs_clear_rpc_createerr();
 
@@ -465,11 +471,11 @@ CLIENT *nfs_get_rpcclient(const struct sockaddr *sap,
 	switch (transport) {
 	case IPPROTO_TCP:
 		return nfs_get_tcpclient(sap, salen, program, version,
-						timeout, 0);
+					 timeout, 0, local_ip);
 	case 0:
 	case IPPROTO_UDP:
 		return nfs_get_udpclient(sap, salen, program, version,
-						timeout, 0);
+					 timeout, 0, local_ip);
 	}
 
 	rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;
@@ -499,7 +505,8 @@ CLIENT *nfs_get_priv_rpcclient(const struct sockaddr *sap,
 			       const unsigned short transport,
 			       const rpcprog_t program,
 			       const rpcvers_t version,
-			       struct timeval *timeout)
+			       struct timeval *timeout,
+			       struct local_bind_info *local_ip)
 {
 	nfs_clear_rpc_createerr();
 
@@ -522,11 +529,11 @@ CLIENT *nfs_get_priv_rpcclient(const struct sockaddr *sap,
 	switch (transport) {
 	case IPPROTO_TCP:
 		return nfs_get_tcpclient(sap, salen, program, version,
-						timeout, 1);
+					 timeout, 1, local_ip);
 	case 0:
 	case IPPROTO_UDP:
 		return nfs_get_udpclient(sap, salen, program, version,
-						timeout, 1);
+					 timeout, 1, local_ip);
 	}
 
 	rpc_createerr.cf_stat = RPC_UNKNOWNPROTO;

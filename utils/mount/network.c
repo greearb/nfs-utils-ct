@@ -533,7 +533,8 @@ static void nfs_pp_debug2(const char *str)
  */
 static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
 			  struct pmap *pmap, const unsigned long *versions,
-			  const unsigned int *protos)
+			  const unsigned int *protos,
+			  struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *saddr = &address.sa;
@@ -551,14 +552,16 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
 		if (verbose)
 			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
 				progname, prog, *p_vers, *p_prot);
-		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
+		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot,
+				     local_ip);
 		if (p_port) {
 			if (!port || port == p_port) {
 				nfs_set_port(saddr, p_port);
 				nfs_pp_debug(saddr, salen, prog, *p_vers,
 						*p_prot, p_port);
 				if (nfs_rpc_ping(saddr, salen, prog,
-							*p_vers, *p_prot, NULL))
+						 *p_vers, *p_prot, NULL,
+						 local_ip))
 					goto out_ok;
 			} else
 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
@@ -611,7 +614,8 @@ out_ok:
  * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
  */
 static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
-			     struct pmap *pmap, int checkv4)
+			     struct pmap *pmap, int checkv4,
+			     struct local_bind_info *local_ip)
 {
 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
 		return 1;
@@ -625,13 +629,13 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
 		memcpy(&save_sa, sap, salen);
 
 		ret = nfs_probe_port(sap, salen, pmap,
-				     probe_nfs3_only, probe_proto);
+				     probe_nfs3_only, probe_proto, local_ip);
 		if (!ret || !checkv4 || probe_proto != probe_tcp_first)
 			return ret;
 
 		nfs_set_port((struct sockaddr *)&save_sa, NFS_PORT);
 		ret =  nfs_rpc_ping((struct sockaddr *)&save_sa, salen, 
-			NFS_PROGRAM, 4, IPPROTO_TCP, NULL);
+				    NFS_PROGRAM, 4, IPPROTO_TCP, NULL, local_ip);
 		if (ret) {
 			rpc_createerr.cf_stat = RPC_FAILED;
 			rpc_createerr.cf_error.re_errno = EAGAIN;
@@ -640,7 +644,8 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
 		return 1;
 	} else
 		return nfs_probe_port(sap, salen, pmap,
-					probe_nfs2_only, probe_udp_only);
+				      probe_nfs2_only, probe_udp_only,
+				      local_ip);
 }
 
 /*
@@ -657,17 +662,20 @@ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
  * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
  */
 static int nfs_probe_mntport(const struct sockaddr *sap, const socklen_t salen,
-				struct pmap *pmap)
+			     struct pmap *pmap,
+			     struct local_bind_info *local_ip)
 {
 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
 		return 1;
 
 	if (nfs_mount_data_version >= 4)
 		return nfs_probe_port(sap, salen, pmap,
-					probe_mnt3_only, probe_udp_first);
+				      probe_mnt3_only, probe_udp_first,
+				      local_ip);
 	else
 		return nfs_probe_port(sap, salen, pmap,
-					probe_mnt1_first, probe_udp_only);
+				      probe_mnt1_first, probe_udp_only,
+				      local_ip);
 }
 
 /*
@@ -684,11 +692,12 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
 			struct pmap *mnt_pmap,
 			const struct sockaddr *nfs_saddr,
 			const socklen_t nfs_salen,
-			struct pmap *nfs_pmap)
+			struct pmap *nfs_pmap,
+			struct local_bind_info *local_ip)
 {
-	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, 0))
+	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, 0, local_ip))
 		return 0;
-	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap);
+	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap, local_ip);
 }
 
 /**
@@ -714,7 +723,8 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
 			const struct sockaddr *nfs_saddr,
 			const socklen_t nfs_salen,
 			struct pmap *nfs_pmap,
-			int checkv4)
+			int checkv4,
+			struct local_bind_info *local_ip)
 {
 	struct pmap save_nfs, save_mnt;
 	const unsigned long *probe_vers;
@@ -726,7 +736,8 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
 
 	if (nfs_pmap->pm_vers)
 		return nfs_probe_version_fixed(mnt_saddr, mnt_salen, mnt_pmap,
-					       nfs_saddr, nfs_salen, nfs_pmap);
+					       nfs_saddr, nfs_salen, nfs_pmap,
+					       local_ip);
 
 	memcpy(&save_nfs, nfs_pmap, sizeof(save_nfs));
 	memcpy(&save_mnt, mnt_pmap, sizeof(save_mnt));
@@ -735,9 +746,9 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
 
 	for (; *probe_vers; probe_vers++) {
 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
-		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, checkv4) != 0) {
+		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, checkv4, local_ip) != 0) {
 			mnt_pmap->pm_vers = *probe_vers;
-			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap) != 0)
+			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap, local_ip) != 0)
 				return 1;
 			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
 		}
@@ -767,15 +778,16 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
  * Otherwise zero is returned; rpccreateerr.cf_stat is set to reflect
  * the nature of the error.
  */
-int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server,
+		    struct local_bind_info *local_ip)
 {
 	struct sockaddr *mnt_addr = SAFE_SOCKADDR(&mnt_server->saddr);
 	struct sockaddr *nfs_addr = SAFE_SOCKADDR(&nfs_server->saddr);
 
 	return nfs_probe_bothports(mnt_addr, sizeof(mnt_server->saddr),
-					&mnt_server->pmap,
-					nfs_addr, sizeof(nfs_server->saddr),
-					&nfs_server->pmap, 0);
+				   &mnt_server->pmap,
+				   nfs_addr, sizeof(nfs_server->saddr),
+				   &nfs_server->pmap, 0, local_ip);
 }
 
 /**
@@ -841,7 +853,8 @@ int start_statd(void)
  * We use a fast timeout since this call is advisory only.
  */
 int nfs_advise_umount(const struct sockaddr *sap, const socklen_t salen,
-		      const struct pmap *pmap, const dirpath *argp)
+		      const struct pmap *pmap, const dirpath *argp,
+		      struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *saddr = &address.sa;
@@ -853,7 +866,7 @@ int nfs_advise_umount(const struct sockaddr *sap, const socklen_t salen,
 	enum clnt_stat res = 0;
 
 	memcpy(saddr, sap, salen);
-	if (nfs_probe_mntport(saddr, salen, &mnt_pmap) == 0) {
+	if (nfs_probe_mntport(saddr, salen, &mnt_pmap, local_ip) == 0) {
 		if (verbose)
 			nfs_error(_("%s: Failed to discover mountd port%s"),
 				progname, clnt_spcreateerror(""));
@@ -863,7 +876,7 @@ int nfs_advise_umount(const struct sockaddr *sap, const socklen_t salen,
 
 	client = nfs_get_priv_rpcclient(saddr, salen, mnt_pmap.pm_prot,
 					mnt_pmap.pm_prog, mnt_pmap.pm_vers,
-					&timeout);
+					&timeout, local_ip);
 	if (client == NULL) {
 		if (verbose)
 			nfs_error(_("%s: Failed to create RPC client%s"),
@@ -920,7 +933,7 @@ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
 	enum clnt_stat res = 0;
 	int msock;
 
-	if (!nfs_probe_mntport(sap, salen, pmap))
+	if (!nfs_probe_mntport(sap, salen, pmap, NULL))
 		return 0;
 	clnt = mnt_openclnt(mnt_server, &msock);
 	if (!clnt)
@@ -1680,7 +1693,8 @@ out:
  * parsed successfully; otherwise EX_FAIL.
  */
 int nfs_umount_do_umnt(struct mount_options *options,
-		       char **hostname, char **dirname)
+		       char **hostname, char **dirname,
+		       char *local_ip_opt)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *sap = &address.sa;
@@ -1707,7 +1721,7 @@ int nfs_umount_do_umnt(struct mount_options *options,
 		/* nfs_lookup reports any errors */
 		return EX_FAIL;
 
-	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname) == 0)
+	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname, NULL) == 0)
 		/* nfs_advise_umount reports any errors */
 		return EX_FAIL;
 

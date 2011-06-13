@@ -749,7 +749,8 @@ out_err:
 static int
 populate_port(struct sockaddr *sa, const socklen_t salen,
 	      const rpcprog_t program, const rpcvers_t version,
-	      const unsigned short protocol)
+	      const unsigned short protocol,
+	      struct local_bind_info *local_ip)
 {
 	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
 #ifdef IPV6_SUPPORTED
@@ -797,7 +798,7 @@ populate_port(struct sockaddr *sa, const socklen_t salen,
 		goto set_port;
 	}
 
-	port = nfs_getport(sa, salen, program, version, protocol);
+	port = nfs_getport(sa, salen, program, version, protocol, local_ip);
 	if (!port) {
 		printerr(0, "ERROR: unable to obtain port for prog %ld "
 			    "vers %ld\n", program, version);
@@ -833,7 +834,8 @@ create_auth_rpc_client(struct clnt_info *clp,
 		       AUTH **auth_return,
 		       uid_t uid,
 		       int authtype,
-		       gss_cred_id_t cred)
+		       gss_cred_id_t cred,
+		       struct local_bind_info *local_ip)
 {
 	CLIENT			*rpc_clnt = NULL;
 	struct rpc_gss_sec	sec;
@@ -907,11 +909,12 @@ create_auth_rpc_client(struct clnt_info *clp,
 		goto out_fail;
 	}
 
-	if (!populate_port(addr, salen, clp->prog, clp->vers, protocol))
+	if (!populate_port(addr, salen, clp->prog, clp->vers,
+			   protocol, local_ip))
 		goto out_fail;
 
 	rpc_clnt = nfs_get_rpcclient(addr, salen, protocol, clp->prog,
-				     clp->vers, &timeout);
+				     clp->vers, &timeout, local_ip);
 	if (!rpc_clnt) {
 		snprintf(rpc_errmsg, sizeof(rpc_errmsg),
 			 "WARNING: can't create %s rpc_clnt to server %s for "
@@ -1017,7 +1020,7 @@ change_identity(uid_t uid)
  */
 static void
 process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
-		    char *service)
+		    char *service, struct local_bind_info *local_ip)
 {
 	CLIENT			*rpc_clnt = NULL;
 	AUTH			*auth = NULL;
@@ -1098,7 +1101,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
 		err = gssd_acquire_user_cred(&gss_cred);
 		if (!err)
 			create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
-							     AUTHTYPE_KRB5, gss_cred);
+							     AUTHTYPE_KRB5, gss_cred, local_ip);
 		/* if create_auth_rplc_client fails try the traditional method of
 		 * trolling for credentials */
 		for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
@@ -1107,7 +1110,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
 				downcall_err = -EKEYEXPIRED;
 			else if (!err)
 				create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
-							     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL);
+								     AUTHTYPE_KRB5, GSS_C_NO_CREDENTIAL,
+								     local_ip);
 		}
 	}
 	if (create_resp != 0) {
@@ -1133,7 +1137,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
 					if ((create_auth_rpc_client(clp, tgtname, &rpc_clnt,
 								    &auth, uid,
 								    AUTHTYPE_KRB5,
-								    GSS_C_NO_CREDENTIAL)) == 0) {
+								    GSS_C_NO_CREDENTIAL, local_ip)) == 0) {
 						/* Success! */
 						success++;
 						break;
@@ -1218,7 +1222,7 @@ handle_krb5_upcall(struct clnt_info *clp)
 		return;
 	}
 
-	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
+	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL, &clp->local_ip);
 }
 
 void
@@ -1328,7 +1332,7 @@ handle_gssd_upcall(struct clnt_info *clp)
 	}
 
 	if (strcmp(mech, "krb5") == 0 && clp->servername)
-		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
+		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service, &clp->local_ip);
 	else {
 		if (clp->servername)
 			printerr(0, "WARNING: handle_gssd_upcall: "

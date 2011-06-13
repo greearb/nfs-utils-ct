@@ -181,7 +181,8 @@ static CLIENT *nfs_gp_get_rpcbclient(struct sockaddr *sap,
 				     const socklen_t salen,
 				     const unsigned short transport,
 				     const rpcvers_t version,
-				     struct timeval *timeout)
+				     struct timeval *timeout,
+				     struct local_bind_info *local_ip)
 {
 	static const char *rpcb_pgmtbl[] = {
 		"rpcbind",
@@ -195,7 +196,7 @@ static CLIENT *nfs_gp_get_rpcbclient(struct sockaddr *sap,
 
 	nfs_set_port(sap, ntohs(nfs_gp_get_rpcb_port(transport)));
 	clnt = nfs_get_rpcclient(sap, salen, transport, rpcb_prog,
-							version, timeout);
+				 version, timeout, local_ip);
 	nfs_gp_map_tcp_errorcodes(transport);
 	return clnt;
 }
@@ -729,7 +730,8 @@ static unsigned short nfs_gp_getport(CLIENT *client,
  */
 int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
 		 const rpcprog_t program, const rpcvers_t version,
-		 const unsigned short protocol, const struct timeval *timeout)
+		 const unsigned short protocol, const struct timeval *timeout,
+		 struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *saddr = &address.sa;
@@ -744,7 +746,7 @@ int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
 
 	memcpy(saddr, sap, (size_t)salen);
 	client = nfs_get_rpcclient(saddr, salen, protocol,
-						program, version, &tout);
+				   program, version, &tout, local_ip);
 	if (client != NULL) {
 		result = nfs_gp_ping(client, tout);
 		nfs_gp_map_tcp_errorcodes(protocol);
@@ -798,7 +800,8 @@ unsigned short nfs_getport(const struct sockaddr *sap,
 			   const socklen_t salen,
 			   const rpcprog_t program,
 			   const rpcvers_t version,
-			   const unsigned short protocol)
+			   const unsigned short protocol,
+			   struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *saddr = &address.sa;
@@ -810,7 +813,8 @@ unsigned short nfs_getport(const struct sockaddr *sap,
 
 	memcpy(saddr, sap, (size_t)salen);
 	client = nfs_gp_get_rpcbclient(saddr, salen, protocol,
-						default_rpcb_version, &timeout);
+				       default_rpcb_version, &timeout,
+				       local_ip);
 	if (client != NULL) {
 		port = nfs_gp_getport(client, saddr, program,
 					version, protocol, timeout);
@@ -840,7 +844,8 @@ unsigned short nfs_getport(const struct sockaddr *sap,
  */
 int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
 		     const rpcprog_t program, const rpcvers_t version,
-		     const unsigned short protocol)
+		     const unsigned short protocol,
+		     struct local_bind_info *local_ip)
 {
 	struct timeval timeout = { -1, 0 };
 	unsigned short port = 0;
@@ -850,7 +855,8 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
 	nfs_clear_rpc_createerr();
 
 	client = nfs_gp_get_rpcbclient(sap, salen, protocol,
-						default_rpcb_version, &timeout);
+				       default_rpcb_version, &timeout,
+				       local_ip);
 	if (client != NULL) {
 		port = nfs_gp_getport(client, sap, program,
 					version, protocol, timeout);
@@ -868,7 +874,8 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
 		nfs_clear_rpc_createerr();
 
 		client = nfs_get_rpcclient(saddr, salen, protocol,
-						program, version, &timeout);
+					   program, version, &timeout,
+					   local_ip);
 		if (client != NULL) {
 			result = nfs_gp_ping(client, timeout);
 			nfs_gp_map_tcp_errorcodes(protocol);
@@ -909,7 +916,8 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
  */
 unsigned short nfs_getlocalport(const rpcprot_t program,
 				const rpcvers_t version,
-				const unsigned short protocol)
+				const unsigned short protocol,
+				struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *lb_addr = &address.sa;
@@ -946,7 +954,8 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
 
 		if (nfs_gp_loopback_address(lb_addr, &lb_len)) {
 			port = nfs_getport(lb_addr, lb_len,
-						program, version, protocol);
+					   program, version, protocol,
+					   local_ip);
 		} else
 			rpc_createerr.cf_stat = RPC_UNKNOWNADDR;
 	}
@@ -1009,7 +1018,7 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
 
 	memcpy(saddr, sap, (size_t)salen);
 	client = nfs_gp_get_rpcbclient(saddr, salen, transport,
-							RPCBVERS_4, &tout);
+				       RPCBVERS_4, &tout, NULL);
 	if (client != NULL) {
 		if (nfs_gp_init_rpcb_parms(addr, program, version,
 						protocol, &parms) != 0) {
@@ -1074,7 +1083,8 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
 			       const unsigned long program,
 			       const unsigned long version,
 			       const unsigned long protocol,
-			       const struct timeval *timeout)
+			       const struct timeval *timeout,
+			       struct local_bind_info *local_ip)
 {
 	struct sockaddr_in address;
 	struct sockaddr *saddr = (struct sockaddr *)&address;
@@ -1094,7 +1104,8 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
 
 	memcpy(saddr, sin, sizeof(address));
 	client = nfs_gp_get_rpcbclient(saddr, (socklen_t)sizeof(*sin),
-					transport, PMAPVERS, &tout);
+				       transport, PMAPVERS, &tout,
+				       local_ip);
 	if (client != NULL) {
 		port = nfs_gp_pmap_getport(client, &parms, tout);
 		CLNT_DESTROY(client);
