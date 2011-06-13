@@ -115,6 +115,8 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
 static int nfs_bind(const int sock, const sa_family_t family,
 		    struct local_bind_info *local_ip)
 {
+	struct sockaddr *sa = NULL;
+	socklen_t salen = 0;
 	struct sockaddr_in sin = {
 		.sin_family		= AF_INET,
 		.sin_addr.s_addr	= htonl(INADDR_ANY),
@@ -124,14 +126,25 @@ static int nfs_bind(const int sock, const sa_family_t family,
 		.sin6_addr		= IN6ADDR_ANY_INIT,
 	};
 
-	switch (family) {
-	case AF_INET:
-		return bind(sock, (struct sockaddr *)(char *)&sin,
-					(socklen_t)sizeof(sin));
-	case AF_INET6:
-		return bind(sock, (struct sockaddr *)(char *)&sin6,
-					(socklen_t)sizeof(sin6));
+	if (local_ip) {
+		sa = &local_ip->addr.sa;
+		salen = local_ip->addrlen;
+	} else {
+		switch (family) {
+		case AF_INET:
+			sa = (struct sockaddr *)&sin;
+			salen = sizeof(sin);
+			break;
+		case AF_INET6:
+			sa = (struct sockaddr *)&sin6;
+			salen = sizeof(sin6);
+		default:
+			break;
+		}
 	}
+
+	if (sa)
+		return bind(sock, sa, salen);
 
 	errno = EAFNOSUPPORT;
 	return -1;
@@ -148,6 +161,7 @@ static int nfs_bind(const int sock, const sa_family_t family,
 static int nfs_bindresvport(const int sock, const sa_family_t family,
 			    struct local_bind_info *local_ip)
 {
+	struct sockaddr *sa = NULL;
 	struct sockaddr_in sin = {
 		.sin_family		= AF_INET,
 		.sin_addr.s_addr	= htonl(INADDR_ANY),
@@ -157,12 +171,22 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
 		.sin6_addr		= IN6ADDR_ANY_INIT,
 	};
 
-	switch (family) {
-	case AF_INET:
-		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin);
-	case AF_INET6:
-		return bindresvport_sa(sock, (struct sockaddr *)(char *)&sin6);
+	if (local_ip) {
+		sa = &local_ip->addr.sa;
+	} else {
+		switch (family) {
+		case AF_INET:
+			sa = (struct sockaddr *)&sin;
+			break;
+		case AF_INET6:
+			sa = (struct sockaddr *)&sin6;
+		default:
+			break;
+		}
 	}
+
+	if (sa)
+		return bindresvport_sa(sock, sa);
 
 	errno = EAFNOSUPPORT;
 	return -1;
@@ -179,12 +203,21 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
 static int nfs_bindresvport(const int sock, const sa_family_t family,
 			    struct local_bind_info *local_ip)
 {
+	struct sockaddr_in laddr;
 	if (family != AF_INET) {
 		errno = EAFNOSUPPORT;
 		return -1;
 	}
 
-	return bindresvport(sock, NULL);
+	laddr.sin_family = family;
+	laddr.sin_port = 0;
+	if (local_ip) {
+		struct sockaddr_in *si = &local_ip->addr.s4;
+		laddr.sin_addr.s_addr = si->sin_addr.s_addr;
+	} else {
+		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	}
+	return bindresvport(sock, &laddr);
 }
 
 #endif	/* !HAVE_LIBTIRPC */
