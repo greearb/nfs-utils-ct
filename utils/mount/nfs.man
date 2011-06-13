@@ -502,6 +502,12 @@ using the FS-Cache facility. See cachefilesd(8)
 and <kernel_soruce>/Documentation/filesystems/caching
 for detail on how to configure the FS-Cache facility.
 Default value is nofsc.
+.BI srcaddr= n
+Specifies a single IPv4 or IPv6 address
+to which the NFS client will bind its sockets.
+This can help force NFS to use a particular IP
+address on a multi-homed machine.  This option is not required
+in most cases.
 .SS "Options for NFS versions 2 and 3 only"
 Use these options, along with the options in the above subsection,
 for NFS versions 2 and 3 only.
