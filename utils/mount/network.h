@@ -36,6 +36,9 @@ typedef struct {
 	struct pmap pmap;
 } clnt_addr_t;
 
+int nfs_parse_local_bind(struct local_bind_info *laddr, const char* str,
+			 sa_family_t family);
+
 /* RPC call timeout values */
 static const struct timeval TIMEOUT = { 20, 0 };
 static const struct timeval RETRY_TIMEOUT = { 3, 0 };
