@@ -1733,6 +1733,8 @@ int nfs_umount_do_umnt(struct mount_options *options,
 	socklen_t salen = sizeof(address);
 	struct pmap nfs_pmap, mnt_pmap;
 	sa_family_t family;
+	struct local_bind_info local_ip;
+	struct local_bind_info *lipp = NULL;
 
 	if (!nfs_options2pmap(options, &nfs_pmap, &mnt_pmap))
 		return EX_FAIL;
@@ -1753,7 +1755,13 @@ int nfs_umount_do_umnt(struct mount_options *options,
 		/* nfs_lookup reports any errors */
 		return EX_FAIL;
 
-	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname, NULL) == 0)
+	if (local_ip_opt &&
+	    nfs_parse_local_bind(&local_ip, local_ip_opt,
+				 sap->sa_family) >= 0) {
+		lipp = &local_ip;
+	}
+
+	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname, lipp) == 0)
 		/* nfs_advise_umount reports any errors */
 		return EX_FAIL;
 

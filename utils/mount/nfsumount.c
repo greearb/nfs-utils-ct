@@ -239,6 +239,8 @@ int nfsumount(int argc, char *argv[])
 	int c, ret;
 	char *spec;
 	struct mntentchn *mc;
+	char *opt;
+	char *local_ip = NULL;
 
 	if (argc < 2) {
 		umount_usage();
@@ -314,7 +316,7 @@ int nfsumount(int argc, char *argv[])
 			return EX_USAGE;
 		}
 		if (hasmntopt(&mc->m, "users") == NULL) {
-			char *opt = hasmntopt(&mc->m, "user");
+			opt = hasmntopt(&mc->m, "user");
 			struct passwd *pw;
 			char *comma;
 			size_t len;
@@ -334,6 +336,20 @@ int nfsumount(int argc, char *argv[])
 		}
 	}
 
+	if (mc) {
+		opt = hasmntopt(&mc->m, "srcaddr");
+		if ((opt != NULL) && strlen(opt) > strlen("srcaddr=")) {
+			local_ip = xstrdup(opt + strlen("srcaddr="));
+			unsigned int z;
+			for (z = 0; z < strlen(local_ip); z++) {
+				if (local_ip[z] == ',') {
+					local_ip[z] = 0;
+					break;
+				}
+			}
+		}
+	}
+
 	ret = EX_SUCCESS;
 	if (mc) {
 		if (!lazy) {
@@ -344,20 +360,24 @@ int nfsumount(int argc, char *argv[])
 				 * we don't want to signal an error, as that
 				 * could cause /sbin/mount to retry!
 				 */
-				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
+				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
+					     local_ip);
 				break;
 			case 1:
 				break;
 			default:
-				return EX_FAIL;
+				ret = EX_FAIL;
+				goto out;
 			}
 		}
 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
 	} else if (*spec != '/') {
 		if (!lazy)
-			ret = nfs_umount23(spec, "tcp,v3");
+			ret = nfs_umount23(spec, "tcp,v3", local_ip);
 	} else
 		ret = del_mtab(NULL, spec);
 
+out:
+	free(local_ip);
 	return ret;
 }
