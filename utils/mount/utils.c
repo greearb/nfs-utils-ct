@@ -153,7 +153,8 @@ int chk_mountpoint(const char *mount_point)
  * pmap tuple.  If the GETPORT call later fails to disambiguate them,
  * then we fail.
  */
-int nfs_umount23(const char *devname, char *string)
+int nfs_umount23(const char *devname, char *string,
+		 char *local_ip_opt)
 {
 	char *hostname = NULL, *dirname = NULL;
 	struct mount_options *options;
@@ -164,7 +165,8 @@ int nfs_umount23(const char *devname, char *string)
 
 	options = po_split(string);
 	if (options) {
-		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
+		result = nfs_umount_do_umnt(options, &hostname, &dirname,
+					    local_ip_opt);
 		po_destroy(options);
 	} else
 		nfs_error(_("%s: option parsing error"), progname);

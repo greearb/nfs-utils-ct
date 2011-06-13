@@ -31,6 +31,8 @@ void mount_usage(void);
 void umount_usage(void);
 int chk_mountpoint(const char *mount_point);
 
-int nfs_umount23(const char *devname, char *string);
+struct local_bind_info;
+int nfs_umount23(const char *devname, char *string,
+		 char *local_ip_opt);
 
 #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
