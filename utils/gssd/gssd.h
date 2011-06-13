@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <gssapi/gssapi.h>
+#include "sockaddr.h"
 
 #define MAX_FILE_NAMELEN	32
 #define FD_ALLOC_BLOCK		256
@@ -85,6 +86,7 @@ struct clnt_info {
 	int                     gssd_fd;
 	int                     gssd_poll_index;
 	struct sockaddr_storage addr;
+	struct local_bind_info  local_ip;
 };
 
 TAILQ_HEAD(topdirs_list_head, topdirs_info) topdirs_list;

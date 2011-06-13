@@ -164,7 +164,7 @@ int nfs_umount23(const char *devname, char *string)
 
 	options = po_split(string);
 	if (options) {
-		result = nfs_umount_do_umnt(options, &hostname, &dirname);
+		result = nfs_umount_do_umnt(options, &hostname, &dirname, NULL);
 		po_destroy(options);
 	} else
 		nfs_error(_("%s: option parsing error"), progname);

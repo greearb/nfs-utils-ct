@@ -25,6 +25,7 @@
 #define _NFS_UTILS_MOUNT_NETWORK_H
 
 #include <rpc/pmap_prot.h>
+#include "sockaddr.h"
 
 #define MNT_SENDBUFSIZE (2048U)
 #define MNT_RECVBUFSIZE (1024U)
@@ -39,10 +40,11 @@ typedef struct {
 static const struct timeval TIMEOUT = { 20, 0 };
 static const struct timeval RETRY_TIMEOUT = { 3, 0 };
 
-int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+int probe_bothports(clnt_addr_t *, clnt_addr_t *, struct local_bind_info *);
 int nfs_probe_bothports(const struct sockaddr *, const socklen_t,
 			struct pmap *, const struct sockaddr *,
-			const socklen_t, struct pmap *);
+			const socklen_t, struct pmap *,
+			struct local_bind_info *);
 int nfs_gethostbyname(const char *, struct sockaddr_in *);
 int nfs_lookup(const char *hostname, const sa_family_t family,
 		struct sockaddr *sap, socklen_t *salen);
@@ -53,7 +55,7 @@ int nfs_callback_address(const struct sockaddr *, const socklen_t,
 		struct sockaddr *, socklen_t *);
 int clnt_ping(struct sockaddr_in *, const unsigned long,
 		const unsigned long, const unsigned int,
-		struct sockaddr_in *);
+	      struct sockaddr_in *);
 
 struct mount_options;
 
@@ -71,11 +73,13 @@ unsigned long nfsvers_to_mnt(const unsigned long);
 
 int nfs_call_umount(clnt_addr_t *, dirpath *);
 int nfs_advise_umount(const struct sockaddr *, const socklen_t,
-		      const struct pmap *, const dirpath *);
+		      const struct pmap *, const dirpath *,
+		      struct local_bind_info *local_ip);
 CLIENT *mnt_openclnt(clnt_addr_t *, int *);
 void mnt_closeclnt(CLIENT *, int);
 
 int nfs_umount_do_umnt(struct mount_options *options,
-		       char **hostname, char **dirname);
+		       char **hostname, char **dirname,
+		       char *local_ip_opt);
 
 #endif	/* _NFS_UTILS_MOUNT_NETWORK_H */

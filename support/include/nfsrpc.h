@@ -55,6 +55,8 @@
 #define NSMPROG		((rpcprog_t)100024)
 #endif
 
+struct local_bind_info;
+
 /**
  * nfs_clear_rpc_createerr - zap all error reporting fields
  *
@@ -75,7 +77,8 @@ extern rpcprog_t	nfs_getrpcbyname(const rpcprog_t, const char *table[]);
 extern CLIENT		*nfs_get_rpcclient(const struct sockaddr *,
 				const socklen_t, const unsigned short,
 				const rpcprog_t, const rpcvers_t,
-				struct timeval *);
+				struct timeval *,
+				struct local_bind_info *);
 
 /*
  * Acquire an RPC CLIENT * with a privileged source port
@@ -83,7 +86,8 @@ extern CLIENT		*nfs_get_rpcclient(const struct sockaddr *,
 extern CLIENT		*nfs_get_priv_rpcclient( const struct sockaddr *,
 				const socklen_t, const unsigned short,
 				const rpcprog_t, const rpcvers_t,
-				struct timeval *);
+				struct timeval *,
+				struct local_bind_info *);
 
 /*
  * Convert a netid to a protocol number and protocol family
@@ -116,7 +120,8 @@ extern int		nfs_getport_ping(struct sockaddr *sap,
 				const socklen_t salen,
 				const rpcprog_t program,
 				const rpcvers_t version,
-				const unsigned short protocol);
+				const unsigned short protocol,
+				struct local_bind_info *local_ip);
 
 /*
  * Generic function that maps an RPC service tuple to an IP port
@@ -124,14 +129,16 @@ extern int		nfs_getport_ping(struct sockaddr *sap,
  */
 extern unsigned short	nfs_getport(const struct sockaddr *,
 				const socklen_t, const rpcprog_t,
-				const rpcvers_t, const unsigned short);
+				const rpcvers_t, const unsigned short,
+				struct local_bind_info *local_ip);
 
 /*
  * Generic function that maps an RPC service tuple to an IP port
  * number of the service on the local host
  */
 extern unsigned short	nfs_getlocalport(const rpcprot_t,
-				const rpcvers_t, const unsigned short);
+				const rpcvers_t, const unsigned short,
+				struct local_bind_info *local_ip);
 
 /*
  * Function to invoke an rpcbind v3/v4 GETADDR request
@@ -153,7 +160,8 @@ extern unsigned long	nfs_pmap_getport(const struct sockaddr_in *,
 				const unsigned long,
 				const unsigned long,
 				const unsigned long,
-				const struct timeval *);
+				const struct timeval *,
+				struct local_bind_info *local_ip);
 
 /*
  * Contact a remote RPC service to discover whether it is responding
@@ -164,7 +172,8 @@ extern int		nfs_rpc_ping(const struct sockaddr *sap,
 				const rpcprog_t program,
 				const rpcvers_t version,
 				const unsigned short protocol,
-				const struct timeval *timeout);
+				const struct timeval *timeout,
+				struct local_bind_info *local_ip);
 
 /* create AUTH_SYS handle with no supplemental groups */
 extern AUTH *			 nfs_authsys_create(void);

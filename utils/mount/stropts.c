@@ -534,7 +534,7 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
 	 * negotiate.  Bail now if we can't contact it.
 	 */
 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
-				 nfs_saddr, nfs_salen, &nfs_pmap)) {
+				 nfs_saddr, nfs_salen, &nfs_pmap, NULL)) {
 		errno = ESPIPE;
 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
 			errno = EOPNOTSUPP;
