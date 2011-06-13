@@ -1133,5 +1133,5 @@ int nfs_probe_statd(void)
         rpcprog_t program = nfs_getrpcbyname(NSMPROG, nfs_ns_pgmtbl);
 
         return nfs_getport_ping((struct sockaddr *)(char *)&addr, sizeof(addr),
-                                program, (rpcvers_t)1, IPPROTO_UDP);
+                                program, (rpcvers_t)1, IPPROTO_UDP, NULL);
 }

@@ -92,6 +92,7 @@ struct nfsmount_info {
 	int			flags,		/* MS_ flags */
 				fake,		/* actually do the mount? */
 				child;		/* forked bg child? */
+	struct local_bind_info  *local_ip;      /* Local IP binding info */
 };
 
 #ifdef MOUNT_CONFIG
@@ -345,6 +346,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
 	};
 	sa_family_t family;
 	int error;
+	char *option;
 
 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
 		return 0;
@@ -370,6 +372,20 @@ static int nfs_validate_options(struct nfsmount_info *mi)
 	if (!nfs_append_addr_option(mi->address->ai_addr,
 					mi->address->ai_addrlen, mi->options))
 		return 0;
+
+	option = po_get(mi->options, "srcaddr");
+	if (option) {
+		struct local_bind_info *local_ip;
+		local_ip = malloc(sizeof(*local_ip));
+		memset(local_ip, 0, sizeof(*local_ip));
+		if (nfs_parse_local_bind(local_ip, option,
+					 mi->address->ai_addr->sa_family) >= 0) {
+			mi->local_ip = local_ip;
+		} else {
+			free(local_ip);
+			return 0;
+		}
+	}
 
 	return 1;
 }
@@ -484,7 +500,8 @@ static int nfs_construct_new_options(struct mount_options *options,
  * FALSE is returned if some failure occurred.
  */
 static int
-nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4,
+			       struct local_bind_info *local_ip)
 {
 	union nfs_sockaddr nfs_address;
 	struct sockaddr *nfs_saddr = &nfs_address.sa;
@@ -534,7 +551,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
 	 * negotiate.  Bail now if we can't contact it.
 	 */
 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
-				 nfs_saddr, nfs_salen, &nfs_pmap, checkv4, NULL)) {
+				 nfs_saddr, nfs_salen, &nfs_pmap, checkv4,
+				 local_ip)) {
 		errno = ESPIPE;
 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
 			errno = EOPNOTSUPP;
@@ -638,7 +656,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
 		printf(_("%s: trying text-based options '%s'\n"),
 			progname, *mi->extra_opts);
 
-	if (!nfs_rewrite_pmap_mount_options(options, checkv4))
+	if (!nfs_rewrite_pmap_mount_options(options, checkv4, mi->local_ip))
 		goto out_fail;
 
 	result = nfs_sys_mount(mi, options);
@@ -1075,6 +1093,7 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
 		.flags		= flags,
 		.fake		= fake,
 		.child		= child,
+		.local_ip	= NULL,
 	};
 	int retval = EX_FAIL;
 
@@ -1087,5 +1106,6 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
 
 	freeaddrinfo(mi.address);
 	free(mi.hostname);
+	free(mi.local_ip);
 	return retval;
 }
