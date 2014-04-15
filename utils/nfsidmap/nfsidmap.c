@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include "xlog.h"
 #include "conffile.h"
+#include "config.h"
 
 int verbose = 0;
 char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
@@ -208,12 +209,25 @@ static int key_invalidate(char *keystr, int keymask)
 		*(strchr(buf, ' ')) = '\0';
 		sscanf(buf, "%x", &key);
 
+#ifdef HAVE_KEYCTL_INVALIDATE
+#warning Using keyctl-invalidate (yay!).
 		if (keyctl_invalidate(key) < 0) {
 			xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
 			fclose(fp);
 			return 1;
 		}
-
+#else
+#ifdef HAVE_KEYCTL_REVOKE
+#warning Using keyctl-revoke because keyctl-invalidate is not available.
+		if (keyctl_revoke(key) < 0) {
+			xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+			fclose(fp);
+			return 1;
+		}
+#else
+#error "Need keyctl_revoke or keyctl_invalidate."
+#endif
+#endif
 		keymask &= ~mask;
 		if (keymask == 0) {
 			fclose(fp);
