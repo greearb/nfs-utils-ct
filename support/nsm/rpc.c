@@ -63,6 +63,10 @@
 #include "nsm.h"
 #include "sm_inter.h"
 
+#ifndef UINT16_MAX
+#define UINT16_MAX		(65535)
+#endif
+
 /*
  * Returns a fresh XID appropriate for RPC over UDP -- never zero.
  */
