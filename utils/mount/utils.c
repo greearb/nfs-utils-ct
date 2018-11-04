@@ -154,7 +154,7 @@ int chk_mountpoint(const char *mount_point)
  * then we fail.
  */
 int nfs_umount23(const char *devname, char *string,
-		 char *local_ip_opt)
+		 char *local_ip_opt, char* dev_name)
 {
 	char *hostname = NULL, *dirname = NULL;
 	struct mount_options *options;
@@ -166,7 +166,7 @@ int nfs_umount23(const char *devname, char *string,
 	options = po_split(string);
 	if (options) {
 		result = nfs_umount_do_umnt(options, &hostname, &dirname,
-					    local_ip_opt);
+					    local_ip_opt, dev_name);
 		po_destroy(options);
 	} else
 		nfs_error(_("%s: option parsing error"), progname);

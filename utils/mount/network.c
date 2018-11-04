@@ -407,13 +407,18 @@ out:
  */
 int
 nfs_parse_local_bind(struct local_bind_info *laddr, const char* node,
-		     sa_family_t family) {
+		     sa_family_t family, const char* dev_name) {
 	/* str is an IP address. */
 	int aiErr;
 	struct addrinfo *aiHead;
 	struct addrinfo hints;
 
 	memset(&hints, 0, sizeof(hints));
+
+	if (dev_name)
+		strncpy(laddr->dev_name, dev_name, sizeof(laddr->dev_name));
+	else
+		laddr->dev_name[0] = 0;
 
 	hints.ai_flags  = AI_NUMERICSERV;
 	hints.ai_socktype = SOCK_STREAM;
@@ -1745,7 +1750,7 @@ out:
  */
 int nfs_umount_do_umnt(struct mount_options *options,
 		       char **hostname, char **dirname,
-		       char *local_ip_opt)
+		       char *local_ip_opt, const char* dev_name)
 {
 	union nfs_sockaddr address;
 	struct sockaddr *sap = &address.sa;
@@ -1776,7 +1781,7 @@ int nfs_umount_do_umnt(struct mount_options *options,
 
 	if (local_ip_opt &&
 	    nfs_parse_local_bind(&local_ip, local_ip_opt,
-				 sap->sa_family) >= 0) {
+				 sap->sa_family, dev_name) >= 0) {
 		lipp = &local_ip;
 	}
 

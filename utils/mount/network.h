@@ -37,7 +37,7 @@ typedef struct {
 } clnt_addr_t;
 
 int nfs_parse_local_bind(struct local_bind_info *laddr, const char* str,
-			 sa_family_t family);
+			 sa_family_t family, const char* dev_name);
 
 /* RPC call timeout values */
 static const struct timeval TIMEOUT = { 20, 0 };
@@ -83,6 +83,6 @@ void mnt_closeclnt(CLIENT *, int);
 
 int nfs_umount_do_umnt(struct mount_options *options,
 		       char **hostname, char **dirname,
-		       char *local_ip_opt);
+		       char *local_ip_opt, const char* dev_name);
 
 #endif	/* _NFS_UTILS_MOUNT_NETWORK_H */

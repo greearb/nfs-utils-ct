@@ -229,6 +229,7 @@ int nfsumount(int argc, char *argv[])
 	struct mntentchn *mc;
 	char *opt;
 	char *local_ip = NULL;
+	char *dev_name = NULL;
 
 	if (argc < 2) {
 		umount_usage();
@@ -336,6 +337,17 @@ int nfsumount(int argc, char *argv[])
 				}
 			}
 		}
+		opt = hasmntopt(&mc->m, "dev_name=");
+		if ((opt != NULL) && strlen(opt) > strlen("dev_name=")) {
+			dev_name = xstrdup(opt + strlen("dev_name="));
+			unsigned int z;
+			for (z = 0; z < strlen(dev_name); z++) {
+				if (dev_name[z] == ',') {
+					dev_name[z] = 0;
+					break;
+				}
+			}
+		}
 	}
 
 	ret = EX_SUCCESS;
@@ -349,7 +361,7 @@ int nfsumount(int argc, char *argv[])
 				 * could cause /sbin/mount to retry!
 				 */
 				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
-					     local_ip);
+					     local_ip, dev_name);
 				break;
 			case 1:
 				break;
@@ -361,11 +373,12 @@ int nfsumount(int argc, char *argv[])
 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
 	} else if (*spec != '/') {
 		if (!lazy)
-			ret = nfs_umount23(spec, "tcp,v3", local_ip);
+			ret = nfs_umount23(spec, "tcp,v3", local_ip, dev_name);
 	} else
 		ret = del_mtab(NULL, spec);
 
 out:
 	free(local_ip);
+	free(dev_name);
 	return ret;
 }
