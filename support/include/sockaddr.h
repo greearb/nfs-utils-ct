@@ -55,7 +55,6 @@ union nfs_sockaddr {
 struct local_bind_info {
 	union nfs_sockaddr addr;
 	socklen_t addrlen;
-	char dev_name[40];
 };
 
 #if SIZEOF_SOCKLEN_T - 0 == 0

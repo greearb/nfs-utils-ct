@@ -129,13 +129,6 @@ static int nfs_bind(const int sock, const sa_family_t family,
 	if (local_ip) {
 		sa = &local_ip->addr.sa;
 		salen = local_ip->addrlen;
-
-		if (local_ip->dev_name[0]) {
-			if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
-				       local_ip->dev_name, strlen(local_ip->dev_name))) {
-				return -1;
-			}
-		}
 	} else {
 		switch (family) {
 		case AF_INET:
@@ -180,12 +173,6 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
 
 	if (local_ip) {
 		sa = &local_ip->addr.sa;
-		if (local_ip->dev_name[0]) {
-			if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
-				       local_ip->dev_name, strlen(local_ip->dev_name))) {
-				return -1;
-			}
-		}
 	} else {
 		switch (family) {
 		case AF_INET:

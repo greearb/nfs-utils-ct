@@ -378,10 +378,8 @@ static int nfs_validate_options(struct nfsmount_info *mi)
 		struct local_bind_info *local_ip;
 		local_ip = malloc(sizeof(*local_ip));
 		memset(local_ip, 0, sizeof(*local_ip));
-		char* dev_name = po_get(mi->options, "srcdev");
 		if (nfs_parse_local_bind(local_ip, option,
-					 mi->address->ai_addr->sa_family,
-					 dev_name) >= 0) {
+					 mi->address->ai_addr->sa_family) >= 0) {
 			mi->local_ip = local_ip;
 		} else {
 			free(local_ip);
