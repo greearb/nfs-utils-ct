@@ -1,0 +1,250 @@
+From 21bb9d019dd409d8cc7fd9e686b44ce2cc6adcc1 Mon Sep 17 00:00:00 2001
+From: Ben Greear <greearb@candelatech.com>
+Date: Sun, 4 Nov 2018 14:11:38 -0800
+Subject: [PATCH] nfs-utils:  Support dev_name=foo option to BINDTODEVICE.
+
+Hopefully this lets us work with VRF.
+
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+ support/include/sockaddr.h |  1 +
+ support/nfs/rpc_socket.c   | 13 +++++++++++++
+ utils/mount/network.c      | 11 ++++++++---
+ utils/mount/network.h      |  4 ++--
+ utils/mount/nfs.man        |  6 ++++++
+ utils/mount/nfsumount.c    | 17 +++++++++++++++--
+ utils/mount/stropts.c      |  4 +++-
+ utils/mount/utils.c        |  4 ++--
+ utils/mount/utils.h        |  2 +-
+ 9 files changed, 51 insertions(+), 11 deletions(-)
+
+diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
+index ed4533c..4148cfe 100644
+--- a/support/include/sockaddr.h
++++ b/support/include/sockaddr.h
+@@ -55,6 +55,7 @@ union nfs_sockaddr {
+ struct local_bind_info {
+ 	union nfs_sockaddr addr;
+ 	socklen_t addrlen;
++	char dev_name[40];
+ };
+ 
+ #if SIZEOF_SOCKLEN_T - 0 == 0
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index 14dad5d..bfe7352 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -129,6 +129,13 @@ static int nfs_bind(const int sock, const sa_family_t family,
+ 	if (local_ip) {
+ 		sa = &local_ip->addr.sa;
+ 		salen = local_ip->addrlen;
++
++		if (local_ip->dev_name[0]) {
++			if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
++				       local_ip->dev_name, strlen(local_ip->dev_name))) {
++				return -1;
++			}
++		}
+ 	} else {
+ 		switch (family) {
+ 		case AF_INET:
+@@ -173,6 +180,12 @@ static int nfs_bindresvport(const int sock, const sa_family_t family,
+ 
+ 	if (local_ip) {
+ 		sa = &local_ip->addr.sa;
++		if (local_ip->dev_name[0]) {
++			if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
++				       local_ip->dev_name, strlen(local_ip->dev_name))) {
++				return -1;
++			}
++		}
+ 	} else {
+ 		switch (family) {
+ 		case AF_INET:
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index a66bbf5..18e22d3 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -407,7 +407,7 @@ out:
+  */
+ int
+ nfs_parse_local_bind(struct local_bind_info *laddr, const char* node,
+-		     sa_family_t family) {
++		     sa_family_t family, const char* dev_name) {
+ 	/* str is an IP address. */
+ 	int aiErr;
+ 	struct addrinfo *aiHead;
+@@ -415,6 +415,11 @@ nfs_parse_local_bind(struct local_bind_info *laddr, const char* node,
+ 
+ 	memset(&hints, 0, sizeof(hints));
+ 
++	if (dev_name)
++		strncpy(laddr->dev_name, dev_name, sizeof(laddr->dev_name));
++	else
++		laddr->dev_name[0] = 0;
++
+ 	hints.ai_flags  = AI_NUMERICSERV;
+ 	hints.ai_socktype = SOCK_STREAM;
+ 	hints.ai_protocol = IPPROTO_TCP;
+@@ -1745,7 +1750,7 @@ out:
+  */
+ int nfs_umount_do_umnt(struct mount_options *options,
+ 		       char **hostname, char **dirname,
+-		       char *local_ip_opt)
++		       char *local_ip_opt, const char* dev_name)
+ {
+ 	union nfs_sockaddr address;
+ 	struct sockaddr *sap = &address.sa;
+@@ -1776,7 +1781,7 @@ int nfs_umount_do_umnt(struct mount_options *options,
+ 
+ 	if (local_ip_opt &&
+ 	    nfs_parse_local_bind(&local_ip, local_ip_opt,
+-				 sap->sa_family) >= 0) {
++				 sap->sa_family, dev_name) >= 0) {
+ 		lipp = &local_ip;
+ 	}
+ 
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 0ad7d25..0f33086 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -37,7 +37,7 @@ typedef struct {
+ } clnt_addr_t;
+ 
+ int nfs_parse_local_bind(struct local_bind_info *laddr, const char* str,
+-			 sa_family_t family);
++			 sa_family_t family, const char* dev_name);
+ 
+ /* RPC call timeout values */
+ static const struct timeval TIMEOUT = { 20, 0 };
+@@ -83,6 +83,6 @@ void mnt_closeclnt(CLIENT *, int);
+ 
+ int nfs_umount_do_umnt(struct mount_options *options,
+ 		       char **hostname, char **dirname,
+-		       char *local_ip_opt);
++		       char *local_ip_opt, const char* dev_name);
+ 
+ #endif	/* _NFS_UTILS_MOUNT_NETWORK_H */
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 35bb3ed..8fc37fb 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -508,6 +508,12 @@ to which the NFS client will bind its sockets.
+ This can help force NFS to use a particular IP
+ address on a multi-homed machine.  This option is not required
+ in most cases.
++.BI dev_name= n
++Specifies the local network device to use for binding
++sockets.
++This can help force NFS to use a particular IP
++address on a multi-homed machine.  This option is not required
++in most cases.
+ .SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+ for NFS versions 2 and 3 only.
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index 77f7b39..43454ca 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -229,6 +229,7 @@ int nfsumount(int argc, char *argv[])
+ 	struct mntentchn *mc;
+ 	char *opt;
+ 	char *local_ip = NULL;
++	char *dev_name = NULL;
+ 
+ 	if (argc < 2) {
+ 		umount_usage();
+@@ -336,6 +337,17 @@ int nfsumount(int argc, char *argv[])
+ 				}
+ 			}
+ 		}
++		opt = hasmntopt(&mc->m, "dev_name=");
++		if ((opt != NULL) && strlen(opt) > strlen("dev_name=")) {
++			dev_name = xstrdup(opt + strlen("dev_name="));
++			unsigned int z;
++			for (z = 0; z < strlen(dev_name); z++) {
++				if (dev_name[z] == ',') {
++					dev_name[z] = 0;
++					break;
++				}
++			}
++		}
+ 	}
+ 
+ 	ret = EX_SUCCESS;
+@@ -349,7 +361,7 @@ int nfsumount(int argc, char *argv[])
+ 				 * could cause /sbin/mount to retry!
+ 				 */
+ 				nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts,
+-					     local_ip);
++					     local_ip, dev_name);
+ 				break;
+ 			case 1:
+ 				break;
+@@ -361,11 +373,12 @@ int nfsumount(int argc, char *argv[])
+ 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
+ 	} else if (*spec != '/') {
+ 		if (!lazy)
+-			ret = nfs_umount23(spec, "tcp,v3", local_ip);
++			ret = nfs_umount23(spec, "tcp,v3", local_ip, dev_name);
+ 	} else
+ 		ret = del_mtab(NULL, spec);
+ 
+ out:
+ 	free(local_ip);
++	free(dev_name);
+ 	return ret;
+ }
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 7c11666..a7d1383 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -378,8 +378,10 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 		struct local_bind_info *local_ip;
+ 		local_ip = malloc(sizeof(*local_ip));
+ 		memset(local_ip, 0, sizeof(*local_ip));
++		char* dev_name = po_get(mi->options, "srcdev");
+ 		if (nfs_parse_local_bind(local_ip, option,
+-					 mi->address->ai_addr->sa_family) >= 0) {
++					 mi->address->ai_addr->sa_family,
++					 dev_name) >= 0) {
+ 			mi->local_ip = local_ip;
+ 		} else {
+ 			free(local_ip);
+diff --git a/utils/mount/utils.c b/utils/mount/utils.c
+index 07e9200..c136395 100644
+--- a/utils/mount/utils.c
++++ b/utils/mount/utils.c
+@@ -154,7 +154,7 @@ int chk_mountpoint(const char *mount_point)
+  * then we fail.
+  */
+ int nfs_umount23(const char *devname, char *string,
+-		 char *local_ip_opt)
++		 char *local_ip_opt, char* dev_name)
+ {
+ 	char *hostname = NULL, *dirname = NULL;
+ 	struct mount_options *options;
+@@ -166,7 +166,7 @@ int nfs_umount23(const char *devname, char *string,
+ 	options = po_split(string);
+ 	if (options) {
+ 		result = nfs_umount_do_umnt(options, &hostname, &dirname,
+-					    local_ip_opt);
++					    local_ip_opt, dev_name);
+ 		po_destroy(options);
+ 	} else
+ 		nfs_error(_("%s: option parsing error"), progname);
+diff --git a/utils/mount/utils.h b/utils/mount/utils.h
+index d344ef7..07af66b 100644
+--- a/utils/mount/utils.h
++++ b/utils/mount/utils.h
+@@ -33,6 +33,6 @@ int chk_mountpoint(const char *mount_point);
+ 
+ struct local_bind_info;
+ int nfs_umount23(const char *devname, char *string,
+-		 char *local_ip_opt);
++		 char *local_ip_opt, char* dev_name);
+ 
+ #endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
+-- 
+1.8.3.1
+
