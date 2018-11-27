@@ -50,7 +50,16 @@
 #include <errno.h>
 #include <libdevmapper.h>
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "device-discovery.h"
+
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
+#endif
+
 
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define EVENT_BUFSIZE (1024 * EVENT_SIZE)

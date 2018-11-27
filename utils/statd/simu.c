@@ -8,6 +8,10 @@
 #include <config.h>
 #endif
 
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
+
 #include <netdb.h>
 #include <arpa/inet.h>
 

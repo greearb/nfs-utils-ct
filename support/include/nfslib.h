@@ -22,6 +22,14 @@
 #include <nfs/nfs.h>
 #include "xlog.h"
 
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
+#endif
+
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
+
 #ifndef _PATH_EXPORTS
 #define _PATH_EXPORTS		"/etc/exports"
 #endif

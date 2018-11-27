@@ -288,6 +288,9 @@ else
   enable_nfsdcltrack="no"
 fi
 
+AC_CHECK_HEADERS(sys/sysmacros.h, , AC_MSG_WARN([sys/sysmacros.h not found]))
+AC_CHECK_HEADERS(stddef.h, , AC_MSG_WARN([stddef.h not found]))
+
 if test "$enable_nfsv41" = yes; then
   AC_CHECK_LIB([devmapper], [dm_task_create], [LIBDEVMAPPER="-ldevmapper"], AC_MSG_ERROR([libdevmapper needed]))
   AC_CHECK_HEADER(libdevmapper.h, , AC_MSG_ERROR([Cannot find devmapper header file libdevmapper.h]))
