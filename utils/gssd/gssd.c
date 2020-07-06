@@ -66,6 +66,8 @@ int  root_uses_machine_creds = 1;
 unsigned int  context_timeout = 0;
 char *preferred_realm = NULL;
 int pipefds[2] = { -1, -1 };
+struct clnt_list_head clnt_list;
+struct topdirs_list_head topdirs_list;
 
 void
 sig_die(int signal)

@@ -167,7 +167,7 @@ static gid_t nobodygid;
 static int pipefds[2] = { -1, -1 };
 
 /* Used by conffile.c in libnfs.a */
-char *conf_path;
+//char *conf_path;
 
 static int
 flush_nfsd_cache(char *path, time_t now)

@@ -37,6 +37,8 @@
 
 int	run_mode = 0;		/* foreground logging mode */
 
+stat_chge	SM_stat_chge;
+
 /* LH - I had these local to main, but it seemed silly to have 
  * two copies of each - one in main(), one static in log.c... 
  * It also eliminates the 256-char static in log.c */

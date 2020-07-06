@@ -5,6 +5,9 @@
  * NSM for Linux.
  */
 
+#ifndef __STATD_H_INCLUDE__
+#define __STATD_H_INCLUDE__
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -41,7 +44,7 @@ extern void	load_state(void);
 /*
  * Host status structure and macros.
  */
-stat_chge		SM_stat_chge;
+extern stat_chge	SM_stat_chge;
 #define MY_NAME		SM_stat_chge.mon_name
 #define MY_STATE	SM_stat_chge.state
 
@@ -66,3 +69,5 @@ extern int run_mode;
  * another host.... */
 #define STATIC_HOSTNAME 8	/* Always use the hostname set by -n */
 #define	MODE_NO_NOTIFY	16	/* Don't notify peers of a reboot */
+
+#endif

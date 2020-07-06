@@ -27,7 +27,7 @@
 #include "misc.h"
 #include "v4root.h"
 
-int v4root_needed;
+//int v4root_needed;
 
 static nfs_export pseudo_root = {
 	.m_next = NULL,
@@ -88,7 +88,8 @@ v4root_create(char *path, nfs_export *export)
 
 	dupexportent(&eep, &pseudo_root.m_export);
 	eep.e_hostname = curexp->e_hostname;
-	strncpy(eep.e_path, path, sizeof(eep.e_path));
+	strncpy(eep.e_path, path, sizeof(eep.e_path) - 1);
+	eep.e_path[sizeof(eep.e_path) - 1] = 0; /* ensure termination */
 	if (strcmp(path, "/") != 0)
 		eep.e_flags &= ~NFSEXP_FSID;
 	set_pseudofs_security(&eep, curexp);
