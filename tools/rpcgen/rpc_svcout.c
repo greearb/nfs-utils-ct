@@ -395,7 +395,7 @@ write_program(definition *def, char *storage)
 			    ROUTINE);
 		} else {
 		    f_print(fout, "\tbool_t (*xdr_%s)(), (*xdr_%s)();\n", ARG, RESULT);
-		    f_print(fout, "\tchar *(*%s)();\n", ROUTINE);
+		    f_print(fout, "\tchar *(*%s)(void*, struct svc_req*);\n", ROUTINE);
 		}
 
 		f_print(fout, "\n");
