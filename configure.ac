@@ -468,7 +468,10 @@ case $host in
     ARCHFLAGS="" ;;
 esac
 
-my_am_cflags="-Wall -Wextra -Wstrict-prototypes -Wno-error=incompatible-pointer-types $ARCHFLAGS -pipe"
+# Check for a specific flag (e.g., -Werror)
+AX_CHECK_COMPILE_FLAG([-Wincompatible-pointer-types],[ARCHFLAGS="$ARCHFLAGS -Wno-error=incompatible-pointer-types"])
+
+my_am_cflags="-Wall -Wextra -Wstrict-prototypes $ARCHFLAGS -pipe"
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
 
