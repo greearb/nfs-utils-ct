@@ -91,12 +91,12 @@ extern int nonfatalerrors;
 /*
  * rpc_util routines 
  */
-void storeval();
+void storeval(list**, definition*);
 
 #define STOREVAL(list,item)	\
 	storeval(list,item)
 
-definition *findval();
+definition *findval(list*, char*, int (*cmp)(definition *, char *));
 
 #define FINDVAL(list,item,finder) \
 	findval(list, item, finder)

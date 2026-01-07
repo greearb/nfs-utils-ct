@@ -101,9 +101,7 @@ findval(list *lst, char *val, int (*cmp)(definition *, char *))
  * store a value in a list 
  */
 void
-storeval(lstp, val)
-	list **lstp;
-	definition *val;
+storeval(list **lstp, definition *val)
 {
 	list **l;
 	list *lst;
@@ -275,14 +273,12 @@ record_open(char *file)
 }
 
 static char expectbuf[100];
-static char *toktostr();
-
+static char *toktostr(tok_kind kind);
 /*
  * error, token encountered was not the expected one 
  */
 void
-expected1(exp1)
-	tok_kind exp1;
+expected1(tok_kind exp1)
 {
 	s_print(expectbuf, "expected '%s'",
 		toktostr(exp1));
@@ -293,8 +289,7 @@ expected1(exp1)
  * error, token encountered was not one of two expected ones 
  */
 void
-expected2(exp1, exp2)
-	tok_kind exp1, exp2;
+expected2(tok_kind exp1, tok_kind exp2)
 {
 	s_print(expectbuf, "expected '%s' or '%s'",
 		toktostr(exp1),
@@ -365,8 +360,7 @@ static token tokstrings[] = {
 };
 
 static char *
-toktostr(kind)
-	tok_kind kind;
+toktostr(tok_kind kind)
 {
 	token *sp;
 

@@ -90,13 +90,13 @@ typedef struct token token;
 /*
  * routine interface 
  */
-void            scan();
-void            scan2();
-void            scan3();
-void            scan_num();
-void            peek();
-int             peekscan();
-void            get_token();
+void            scan(tok_kind, token*);
+void            scan2(tok_kind, tok_kind, token*);
+void            scan3(tok_kind, tok_kind, tok_kind, token*);
+void            scan_num(token*);
+void            peek(token*);
+int             peekscan(tok_kind, token*);
+void            get_token(token*);
 void            expected1(tok_kind);
 void            expected2(tok_kind, tok_kind);
 void            expected3(tok_kind, tok_kind, tok_kind);
